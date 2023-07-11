@@ -1,0 +1,10 @@
+{
+"WIFI_IFACE":"default_radio0",
+"IFNAME":"wlan0-743559",
+"DEVICE":"radio0",
+"NETWORK":"lan",
+"MODE":"ap",
+"SSID":"ShellyInterface",
+"ENCRYPTION":"psk2",
+"KEY":""
+}

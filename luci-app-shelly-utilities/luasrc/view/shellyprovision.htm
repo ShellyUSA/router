@@ -1,0 +1,297 @@
+<%#
+ Copyright 2012 Jo-Philipp Wich <jow@openwrt.org>
+ Licensed to the public under the Apache License 2.0.
+-%>
+
+<% css = [[
+
+.commandbox {
+	height: 12em;
+	width: 30%;
+	float: left;
+	height: 12em;
+	margin: 5px;
+	position: relative;
+}
+
+.commandbox h3 {
+	font-size: 1.5em !important;
+	line-height: 2em !important;
+	margin: 0 !important;
+}
+
+.commandbox input[type="text"] {
+	width: 50% !important;
+}
+
+.commandbox div {
+	position: absolute;
+	left: 0;
+	bottom: 1.5em;
+}
+
+]] -%>
+
+<%+header%>
+
+<script type="text/javascript">//<![CDATA[
+	
+	window.onload = function() {
+			shelly_load()
+			monitor_scan_wifi_log()
+		}
+
+	let config
+
+	function shelly_save_run()
+	{
+		document.getElementById("save-run-btn").value="setting..."
+		document.getElementById("save-run-btn").style.opacity="0.3"
+
+		const ROUTER_SSID = document.getElementById("router_ssid").value
+		const ROUTER_PASS = document.getElementById("router_pass").value
+		const MQTT_USER = document.getElementById("mqtt_user").value
+		const MQTT_PASS = document.getElementById("mqtt_pass").value
+		const MQTT_SERVER = document.getElementById("mqtt_server").value
+		const MQTT_PROVISION = document.getElementById("mqtt_provision").value
+		const MQTT_BROKER_PASS = config.MQTT_BROKER_PASS
+		const MQTT_BROKER_USER = config.MQTT_BROKER_USER
+		const MQTT_BROKER_PORT = config.MQTT_BROKER_PORT
+		const MQTT_BROKER_RUN =config.MQTT_BROKER_RUN
+		const SHELLY_PROVISION_RUN = document.getElementById("shelly_provision_run").value 
+
+			
+		fetch(`http://192.168.1.1/cgi-bin/luci/shellyutilities/api/saverunconfig/config?router_ssid=${ROUTER_SSID}&router_pass=${ROUTER_PASS}&mqtt_user=${MQTT_USER}&mqtt_pass=${MQTT_PASS}&mqtt_server=${MQTT_SERVER}&mqtt_provision=${MQTT_PROVISION}&mqtt_broker_pass=${MQTT_BROKER_PASS}&mqtt_broker_user=${MQTT_BROKER_USER}&mqtt_broker_port=${MQTT_BROKER_PORT}&mqtt_broker_run=${MQTT_BROKER_RUN}&shelly_provision_run=${SHELLY_PROVISION_RUN}`)
+		.then(incoming=>incoming.json())
+		.then(response=>{
+
+				document.getElementById("save-run-btn").value="Set!"
+				document.getElementById("save-run-btn").style.opacity="1.0"
+
+				document.getElementById("scan_wifi_status").value = response.scan_wifi_status
+
+				config = JSON.parse(response.configuration)
+				document.getElementById("router_ssid").value = config.ROUTER_SSID
+				document.getElementById("router_pass").value = config.ROUTER_PASS
+				document.getElementById("mqtt_user").value = config.MQTT_USER
+				document.getElementById("mqtt_pass").value = config.MQTT_PASS
+				document.getElementById("mqtt_server").value = config.MQTT_SERVER
+				document.getElementById("mqtt_provision").value = config.MQTT_PROVISION
+
+				document.getElementById("shelly_provision_run").value = config.SHELLY_PROVISION_RUN
+
+		})		
+		.catch(console.error)
+	}
+
+	function shelly_load(){
+		
+		fetch("http://192.168.1.1/cgi-bin/luci/shellyutilities/api/getconfigstatus/")
+		.then(incoming=>incoming.json())
+		.then(response=>{
+
+				document.getElementById("scan_wifi_status").value = response.scan_wifi_status
+
+				config = JSON.parse(response.configuration)
+				document.getElementById("router_ssid").value = config.ROUTER_SSID
+				document.getElementById("router_pass").value = config.ROUTER_PASS
+				document.getElementById("mqtt_user").value = config.MQTT_USER
+				document.getElementById("mqtt_pass").value = config.MQTT_PASS
+				document.getElementById("mqtt_server").value = config.MQTT_SERVER
+				document.getElementById("mqtt_provision").value = config.MQTT_PROVISION
+				
+				document.getElementById("shelly_provision_run").value = config.SHELLY_PROVISION_RUN
+		})
+		.catch(console.error)
+
+	}
+
+
+	let reset_config_certainty=0
+
+	function shelly_wireless_restore(){
+		
+		if(reset_config_certainty==0){
+			document.getElementById("restore-btn").value="ARE YOU SURE?"
+			document.getElementById("restore-btn").style.backgroundColor="red"
+		}
+		if(reset_config_certainty==1){
+			document.getElementById("restore-btn").value="Press again to confirm..."
+			document.getElementById("restore-btn").style.backgroundColor="red"
+		}
+		
+		if(reset_config_certainty==2){
+			document.getElementById("restore-btn").value="RESETTING..."
+			document.getElementById("restore-btn").style.opacity="0.3"
+			fetch("http://192.168.1.1/cgi-bin/luci/shellyutilities/api/restorewireless/")
+			.then(incoming=>incoming.json())
+			.then(response=>{
+
+					document.getElementById("server_message").value = response.message
+					document.getElementById("restore-btn").value="Config Reset"
+					document.getElementById("restore-btn").style.backgroundColor="grey"
+					document.getElementById("restore-btn").style.opacity="0.8"
+				
+			})
+			.catch(console.error)
+		}
+		reset_config_certainty++
+
+	}
+
+
+	function use_mqtt_broker_config(){
+		document.getElementById("mqtt_user").value = config.MQTT_BROKER_USER
+		document.getElementById("mqtt_pass").value = config.MQTT_BROKER_PASS
+	}
+
+	monitor = 1
+	refreshRate = 5000
+
+	function monitor_scan_wifi_log(){
+
+		fetch("http://192.168.1.1/cgi-bin/luci/shellyutilities/api/provisionlog")
+			.then(incoming=>incoming.json())
+			.then(response=>{
+					document.getElementById("log-feed").innerHTML = response.scan_wifi_log
+					document.getElementById("log-feed").scrollTop=document.getElementById("log-feed").scrollHeight
+					if(monitor){
+						setTimeout(()=>{
+							monitor_scan_wifi_log()
+						},refreshRate)
+					} 
+			})
+			.catch(console.error)
+
+	}
+
+	function toggle_monitor(){
+
+		if(monitor){
+			monitor = 0
+			document.getElementById("provision-log-btn").style.backgroundColor = "lightgreen"
+			document.getElementById("provision-log-btn").value = "PLAY"
+		}
+		else{
+			monitor = 1
+
+			monitor_scan_wifi_log()
+
+			document.getElementById("provision-log-btn").style.backgroundColor = "lightblue"
+			document.getElementById("provision-log-btn").value = "PAUSE"
+		}
+	}
+
+	let clear_log_certainty = 0
+
+	function clear_log(){
+
+		if(clear_log_certainty==0){
+			document.getElementById("clear-log-btn").value="ARE YOU SURE?..."
+			document.getElementById("clear-log-btn").style.backgroundColor="red"
+		}
+		
+		if(clear_log_certainty==1){
+			document.getElementById("clear-log-btn").value="CLEARING..."
+			document.getElementById("clear-log-btn").style.opacity="0.3"
+			fetch("http://192.168.1.1/cgi-bin/luci/shellyutilities/api/clearprovisionlog/")
+			.then(incoming=>incoming.json())
+			.then(response=>{
+
+					document.getElementById("server_message").value = response.message
+					document.getElementById("clear-log-btn").value="CLEARED!"
+					document.getElementById("clear-log-btn").style.backgroundColor="grey"
+					document.getElementById("clear-log-btn").style.opacity="0.8"
+				
+				setTimeout(() => {
+					clear_log_certainty = 0
+					document.getElementById("clear-log-btn").value="CLEAR"
+					document.getElementById("clear-log-btn").style.backgroundColor="lightblue"
+					document.getElementById("clear-log-btn").style.opacity="1.0"
+				}, 1500);
+				
+			})
+			.catch(console.error)
+		}
+		clear_log_certainty++
+
+	
+	}
+
+//]]></script>
+
+<style>
+
+.log-feed{
+
+	background-color: #000000;
+	color: white;
+	font-weight: 900;
+	height: 300px;
+	overflow-y: scroll;
+	padding: 20px;
+	border: 3px solid grey;
+	border-radius: 10px;
+	display: flex;
+
+}
+</style>
+
+
+<form method="get" action="<%=pcdata(FULL_REQUEST_URI)%>">
+	<div class="cbi-map">
+		<h2 name="content">Auto Provision Devices</h2>
+
+		<div class="cbi-section">
+	
+			<label for="shelly_provision_run">SHELLY PROVISION SERVICE:	</label><select name="shelly_provision_run" id="shelly_provision_run">
+			  <option value="true">ON</option>
+			  <option value="false">OFF</option>
+			</select><br><br>
+			<label for="router_ssid">WIFI SSID:	</label><input type="text" id="router_ssid" name="router_ssid" size="0">
+			<label for="router_pass">PASS:	</label><input type="text" id="router_pass" name="router_pass" size="0">
+			<br><br><br>
+			<label for="mqtt_provision">Set MQTT:	</label>
+			<select name="mqtt_provision" id="mqtt_provision">
+			  <option value="true">TRUE</option>
+			  <option value="false">FALSE</option>
+			</select><br><br>
+		
+			<label for="mqtt_server">MQTT SERVER:	</label><input type="text" id="mqtt_server" name="mqtt_server" size="0"><br><br>
+			<label for="mqtt_user">MQTT USER:	</label><input type="text" id="mqtt_user" name="mqtt user" size="0">
+			<label for="mqtt_pass">PASS:	</label><input type="text" id="mqtt_pass" name="mqtt_pass" size="0"><br><br>
+			<input type="button" id="use-broker-config-btn" class="cbi-button cbi-button-apply" onclick="use_mqtt_broker_config()" size="0" value="USE BROKER CONFIG">
+			<br>
+		
+		</div>
+		
+		<div class="cbi-section">
+					
+			<label for="scan_wifi_status">Auto Provision Service:	</label>
+			<input type="text" disabled id="scan_wifi_status" name="scan wifi status" size="0"></input>
+			<br><br>
+			<input style="width: 100%" type="text" disabled id="server_message" name="server message" size="0"></input><br><br>
+		
+		<input type="button" id="save-run-btn" class="cbi-button cbi-button-apply" onclick="shelly_save_run()" size="0" value="CONFIRM">
+		<input type="button" id="restore-btn" class="cbi-button cbi-button-apply" onclick="shelly_wireless_restore()" size="0"  value="RESET WIRELESS CONFIG">
+		
+		<br><br>
+		
+		</div>
+
+		<div class="cbi-section">
+		<label for="log-feed">Provision Log:	</label>	
+		<br><br>
+			<pre class="log-feed" id="log-feed"></pre>	
+		<br><br>
+		<input type="button" id="provision-log-btn" style="background-color: lightblue" class="cbi-button cbi-button-apply" onclick="toggle_monitor()" size="0" value="PAUSE">
+		<input type="button" id="clear-log-btn"  style="background-color: lightblue" class="cbi-button cbi-button-apply" onclick="clear_log()" size="0" value="CLEAR">
+		</div>
+
+	</div>
+
+
+</form>
+
+<%+footer%>
+

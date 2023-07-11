@@ -1,0 +1,143 @@
+<%#
+ Copyright 2012 Jo-Philipp Wich <jow@openwrt.org>
+ Licensed to the public under the Apache License 2.0.
+-%>
+
+<% css = [[
+
+.commandbox {
+	height: 12em;
+	width: 30%;
+	float: left;
+	height: 12em;
+	margin: 5px;
+	position: relative;
+}
+
+.commandbox h3 {
+	font-size: 1.5em !important;
+	line-height: 2em !important;
+	margin: 0 !important;
+}
+
+.commandbox input[type="text"] {
+	width: 50% !important;
+}
+
+.commandbox div {
+	position: absolute;
+	left: 0;
+	bottom: 1.5em;
+}
+
+]] -%>
+
+<%+header%>
+
+<script type="text/javascript">//<![CDATA[
+	
+	window.onload = function() {
+			shelly_load()
+		}
+
+	let config
+
+	function shelly_save_run()
+	{
+		document.getElementById("save-run-btn").value="setting..."
+		document.getElementById("save-run-btn").style.opacity="0.3"
+
+		const ROUTER_SSID = config.ROUTER_SSID
+		const ROUTER_PASS = config.ROUTER_PASS
+		const MQTT_USER = config.MQTT_USER
+		const MQTT_PASS = config.MQTT_PASS
+		const MQTT_SERVER = config.MQTT_SERVER
+		const MQTT_PROVISION = config.MQTT_PROVISION
+		const MQTT_BROKER_PASS = document.getElementById("mqtt_broker_pass").value
+		const MQTT_BROKER_USER = document.getElementById("mqtt_broker_user").value
+		const MQTT_BROKER_PORT = document.getElementById("mqtt_broker_port").value
+		const MQTT_BROKER_RUN = document.getElementById("mqtt_broker_run").value 
+		const SHELLY_PROVISION_RUN = config.SHELLY_PROVISION_RUN
+
+			
+		fetch(`http://192.168.1.1/cgi-bin/luci/shellyutilities/api/saverunconfig/config?router_ssid=${ROUTER_SSID}&router_pass=${ROUTER_PASS}&mqtt_user=${MQTT_USER}&mqtt_pass=${MQTT_PASS}&mqtt_server=${MQTT_SERVER}&mqtt_provision=${MQTT_PROVISION}&mqtt_broker_pass=${MQTT_BROKER_PASS}&mqtt_broker_user=${MQTT_BROKER_USER}&mqtt_broker_port=${MQTT_BROKER_PORT}&mqtt_broker_run=${MQTT_BROKER_RUN}&shelly_provision_run=${SHELLY_PROVISION_RUN}`)
+		.then(incoming=>incoming.json())
+		.then(response=>{
+
+				document.getElementById("save-run-btn").value="Set!"
+				document.getElementById("save-run-btn").style.opacity="1.0"
+
+				document.getElementById("mqtt_broker_status").value = response.mqtt_broker_status
+
+				config= JSON.parse(response.configuration)
+			
+				document.getElementById("mqtt_broker_pass").value = config.MQTT_BROKER_PASS
+				document.getElementById("mqtt_broker_user").value = config.MQTT_BROKER_USER
+				document.getElementById("mqtt_broker_port").value = config.MQTT_BROKER_PORT
+				document.getElementById("mqtt_broker_run").value = config.MQTT_BROKER_RUN
+		
+		})		
+		.catch(console.error)
+	}
+
+	function shelly_load(){
+		
+		fetch("http://192.168.1.1/cgi-bin/luci/shellyutilities/api/getconfigstatus/")
+		.then(incoming=>incoming.json())
+		.then(response=>{
+
+				document.getElementById("mqtt_broker_status").value = response.mqtt_broker_status
+
+				config= JSON.parse(response.configuration)
+			
+				document.getElementById("mqtt_broker_pass").value = config.MQTT_BROKER_PASS
+				document.getElementById("mqtt_broker_user").value = config.MQTT_BROKER_USER
+				document.getElementById("mqtt_broker_port").value = config.MQTT_BROKER_PORT
+				document.getElementById("mqtt_broker_run").value = config.MQTT_BROKER_RUN
+				
+		})
+		.catch(console.error)
+
+	}
+
+	
+//]]></script>
+
+
+
+<form method="get" action="<%=pcdata(FULL_REQUEST_URI)%>">
+	<div class="cbi-map">
+		<h2 name="content">MQTT Broker</h2>
+
+		<div class="cbi-section">	
+						
+			<label for="mqtt_broker_run">SHELLY BROKER SERVICE:	</label><select name="mqtt_broker_run" id="mqtt_broker_run">
+			  <option value="true">ON</option>
+			  <option value="false">OFF</option>
+			</select>
+			
+			<label for="mqtt_broker_port">PORT:	</label><input type="number" id="mqtt_broker_port" name="mqtt_broker_port" size="0">
+			<label for="mqtt_broker_user">USER:	</label><input type="text" id="mqtt_broker_user" name="mqtt_broker_user" size="0">
+			<label for="mqtt_broker_pass">PASS:	</label><input type="text" id="mqtt_broker_pass" name="mqtt_broker_pass" size="0">
+		
+			<br>
+		</div>
+		
+		<div class="cbi-section">
+			
+			<label for="mqtt_broker_status">MQTT Broker Service:	</label>
+			<input type="text" disabled="" id="mqtt_broker_status" name="mqtt broker status" size="0"></input>
+			<br><br>
+			<input style="width: 100%" type="text" disabled id="server_message" name="server message" size="0"></input><br><br>
+		
+		<input type="button" id="save-run-btn" class="cbi-button cbi-button-apply" onclick="shelly_save_run()" size="0" value="CONFIRM">
+		<br><br>
+		
+		</div>
+	</div>
+
+
+</form>
+
+<%+footer%>
+

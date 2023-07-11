@@ -1,0 +1,11 @@
+c82fb636dc733fdc578a3e0777ab42fbdf9aa0857d53ec0cd5a75cb7dae82003 *config.buildinfo
+725b9d1129cafa112f499922f855e70dd03e8d31b324699a50b0c19ad10c23fe *feeds.buildinfo
+a16f9e04ead549e478f5be69f0a14fb31804bb7cbf534ed8ff2de4186ccd3b4a *openwrt-ramips-mt7621-device-zbt-we1326.manifest
+<<<<<<< HEAD
+248df9fb47fd65398c892796fe5961e40d84c52d71b8c99f764b433859d6b241 *openwrt-ramips-mt7621-zbt-we1326-initramfs-kernel.bin
+e0b3073113b21ef6737716ef2e85869be49f1d452e7e34dfaf95aaaf98de107b *openwrt-ramips-mt7621-zbt-we1326-squashfs-sysupgrade.bin
+=======
+8e9048c60f3148be4858c56de68ab60053324975ef8edf4d031c7276a8ab5965 *openwrt-ramips-mt7621-zbt-we1326-initramfs-kernel.bin
+c3cabc9ebe02fdbcb56fa37009fd60fef03f19106614e635da4b4b3901ebafa5 *openwrt-ramips-mt7621-zbt-we1326-squashfs-sysupgrade.bin
+>>>>>>> 612000ea62e5e8da60d222d446caf2b4be039187
+290c29a31fbe80ec18536fd4ca5d2416282d4c4342c91f7611c4843964caaf50 *version.buildinfo

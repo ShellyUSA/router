@@ -1,0 +1,13 @@
+:root {
+	--main-color: #2685c7;
+	--header-bg: #ffffff;
+	--header-color: #2685c7;
+	--bar-bg: #2685c7;
+	--menu-bg-color: #fff;
+	--menu-color: #5f6368;
+	--menu-color-hover: #202124;
+	--main-menu-color: #202124;
+	--submenu-bg-hover: #9ad5ff;
+	--submenu-bg-hover-active: #2685c7;
+	--font-body: "system-ui";
+}

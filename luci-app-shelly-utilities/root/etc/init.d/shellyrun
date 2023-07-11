@@ -1,0 +1,110 @@
+#!/bin/sh /etc/rc.common
+#Shelly app autostart script
+#This script runs these commands(or not) at boot depending on config settings:
+#/usr/shelly/config.json 
+
+#V2.0.0 DBarba 20230518 updated bash scripting instead of shell (sh), small refactors
+#V2.0.1 DBarba 20230520 log record for stopping scan_wifi and brought back mosquitto intilization here from API
+#V2.0.2 DBarba 20230523 Refactored rm -r commands to only delete with sed cmds, leaving thme in place but still clearing them
+
+START=99
+STOP=99
+ 
+start() {        
+
+    echo "starting..."
+
+    #creates if not existent file for provisioning queue
+    touch /tmp/provision_queue
+
+    #restores previous wlan0-743559(-shelly) wireless in case of router power off mid script
+    bash /usr/shelly/restore_wifi_config.sh
+
+    #get .json file
+    json=$(cat /usr/shelly/config.json)
+
+    #Extract user settings for MQTT broker and Auto Provision
+    MQTT_BROKER_PASS=$(echo "$json" | jq -r '.MQTT_BROKER_PASS')
+    MQTT_BROKER_USER=$(echo "$json" | jq -r '.MQTT_BROKER_USER')
+    MQTT_BROKER_PORT=$(echo "$json" | jq -r '.MQTT_BROKER_PORT')
+    MQTT_BROKER_RUN=$(echo "$json" | jq -r '.MQTT_BROKER_RUN')
+    SHELLY_PROVISION_RUN=$(echo "$json" | jq -r '.SHELLY_PROVISION_RUN')
+
+
+    #check to run mosquitto broker in background or not
+    if $MQTT_BROKER_RUN = "true"; then
+
+		#clearing passwd file properly (only one user allowed set by admin through shelly utilities)
+		sed -i '1,$d' /etc/mosquitto/passwd
+		
+        #setting Mosquitto MQTT broker user and encrypted password
+		mosquitto_passwd -b /etc/mosquitto/passwd $MQTT_BROKER_USER $MQTT_BROKER_PASS
+
+        #sets moquitto.conf to be used with user and password 
+        sed -i "/^#password_file\|^password_file/c\password_file /etc/mosquitto/passwd" /etc/mosquitto/mosquitto.conf
+        sed -i "/^#allow_anonymous\|^allow_anonymous/c\allow_anonymous false" /etc/mosquitto/mosquitto.conf
+
+        #update mosquitto port from /etc/mosquitto/mosquitto.conf
+        sed -i -E "s/^#?port [0-9]+/port $MQTT_BROKER_PORT/" /etc/mosquitto/mosquitto.conf
+
+        #start mosquitto MQTT broker server
+        /etc/init.d/mosquitto start
+
+    else
+
+        #stop mosquitto MQTT broker server
+        /etc/init.d/mosquitto stop
+
+        #setting mosquitto.conf and passwd file properly
+        sed -i '1,$d' /etc/mosquitto/passwd
+
+        #sets moquitto.conf comments back password file and anaonymous user (defaults)
+        sed -i "/^#password_file\|^password_file/c\#password_file" /etc/mosquitto/mosquitto.conf
+        sed -i "/^#allow_anonymous\|^allow_anonymous/c\#allow_anonymous true" /etc/mosquitto/mosquitto.conf
+
+        #return commented default port and refresh/stop service
+        sed -i -E "s/^#?port [0-9]+/#port 1883/" /etc/mosquitto/mosquitto.conf
+    fi
+   
+
+    #check to run scan_wifi in background or stop
+    if $SHELLY_PROVISION_RUN = "true"; then
+        #check scan_wifi scripts in background
+        PID_SCAN_WIFI_FILE=/var/run/scan_wifi.pid
+
+        #ensure only one instance is deployed
+        if [ -f $PID_SCAN_WIFI_FILE ] && kill -0 $(cat $PID_SCAN_WIFI_FILE) >/dev/null 2>&1; then 
+            sleep 0
+        else 
+            #start scan_wifi provisioning script
+            bash /usr/shelly/scan_wifi.sh >/dev/null 2>&1 & echo $! > $PID_SCAN_WIFI_FILE 
+        fi
+    else
+        #kill all instances of scan_wifi provision script
+        cat $PID_SCAN_WIFI_FILE | xargs kill || true
+
+        #leave message in log service is stopped
+        time_stamp=$(date +"%r")
+        echo "scan_wifi has STOPPED (at $time_stamp )" >> /usr/shelly/scan_wifi.log
+    fi  
+
+}                 
+ 
+stop() {          
+
+    echo "stopping..."
+
+    #stop mosquitto MQTT broker server
+    /etc/init.d/mosquitto stop
+
+    #stops provisoning service (all instances of scan_wifi script)
+    kill $(ps | grep scan_wifi.sh | grep -v grep | awk '{print $1}') || true
+
+    #restores previous wlan0-743559(-shelly) wireless in case of service stoppage mid script
+    bash /usr/shelly/restore_wifi_config.sh
+
+    #leave message in log service is stopped
+    time_stamp=$(date +"%r")
+    echo "scan_wifi has STOPPED (at $time_stamp )" >> /usr/shelly/scan_wifi.log
+
+}
